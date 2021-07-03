@@ -1,6 +1,6 @@
 ## https://www.r-bloggers.com/2017/05/forecasting-arimax-model-exercises-part-5/
 
-setwd("C:\\Users\\my lenovo\\Desktop\\MSc Operations and Supply Chain Management\\Modules\\Dissertation\\datasets")
+setwd("C:\\Users\\my lenovo\\Desktop\\MSc Operations and Supply Chain Management\\Modules\\Dissertation\\datasets\\Miscellaneous/")
 
 df <- read.csv("Icecream.csv")
 
