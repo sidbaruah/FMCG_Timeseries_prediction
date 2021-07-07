@@ -5,6 +5,7 @@ setwd("C:\\Users\\my lenovo\\Desktop\\MSc Operations and Supply Chain Management
 df <- read.csv("Icecream.csv")
 
 df
+nrow(df)
 
 library(ggplot2)
 library(gridExtra)

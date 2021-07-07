@@ -33,6 +33,7 @@ p_food_beverage <- ggplot(df_sales, aes(x = Months, y = Food_and_beverage_stores
   geom_line(color="Orange") + ggtitle("Food and Beverage Stores") +scale_x_date(labels = date_format("%Y-%m"), breaks = date_breaks("6 month"))
 p_food_beverage
 
+
 p_Grocery <- ggplot(df_sales, aes(x = Months, y = Grocery_stores)) +
   ylab("Sales") +
   xlab("Periods") +
@@ -216,7 +217,7 @@ test <- df_sales[37:40,] #split test data based on row numbers
 test
 
 # make arima model based on train data and validate with test data
-fit_train<- Arima(train$Food_and_beverage_stores, order = c(3,12,1), xreg = stringency_death_matrix[1:36,1:2])
+fit_train<- auto.arima(train$Food_and_beverage_stores, d=1, xreg = stringency_death_matrix[1:36,1:2])
 fcast_test <- forecast(fit_train, xreg = stringency_death_matrix[37:40,1:2], h = 4)
 fcast_test
 autoplot(fcast_test)
@@ -249,6 +250,10 @@ autoplot(fcast_d1_food_beverage)
 summary(fcast_d1_food_beverage)
 
 
+
+
+
+
 #Checking first difference for rest of the columns and doing ARIMA
 
 
@@ -274,6 +279,7 @@ summary(fcast_d1_supermarkets)
 
 d1_gas<- diff(log(df_sales$Gasoline_stations))
 adf.test(d1_gas)
+plot(d1_gas, type = "l")
 
 
 
@@ -282,12 +288,12 @@ names(df_sales[2:20])
 multi_stat_tests<- function(df_sales){
   p <- ncol(df_sales)
   df_multi <- data.frame(var = names(df_sales),
-                         # box.pvalue=sapply(df_sales, function(v) Box.test(ts(v),lag=20,type="Ljung-Box")$p.value),
-                         # kpss.pvalue=sapply(df_sales, function(v) kpss.test(ts(v))$p.value),
+                          box.pvalue=sapply(df_sales, function(v) Box.test(ts(v),lag=20,type="Ljung-Box")$p.value),
+                          kpss.pvalue=sapply(df_sales, function(v) kpss.test(ts(v))$p.value),
                          adf.pvalue=sapply(df_sales, function(v) adf.test(ts(diff(log(v))),alternative = "stationary")$p.value)
   )
-  # df_multi$box <- df_multi$box.pvalue < 0.05
-  # df_multi$kpss <- df_multi$kpss.pvalue > 0.05
+   df_multi$box <- df_multi$box.pvalue < 0.05
+   df_multi$kpss <- df_multi$kpss.pvalue > 0.05
   df_multi$adf <- df_multi$adf.pvalue < 0.05
   row.names(df_multi) <- c()
   df_multi
@@ -296,5 +302,430 @@ multi_stat_tests<- function(df_sales){
 multi_stat_tests(df_sales[2:20])
 ####
 
+residuals(fcast_d1_food_beverage)
+plot(fcast_d1_food_beverage$residuals)
+
+## convert data to time-series
+timeseries_monthly <- ts(df_sales[,2:20],start = c(2018,1), frequency = 12)
+
+ggseasonplot(timeseries_monthly, year.labels=TRUE, continuous=TRUE)
+
+ggAcf(df_sales$Food_and_beverage_stores)
+ggPacf(df_sales$Food_and_beverage_stores)
+grid.arrange(ggAcf(df_sales$Food_and_beverage_stores),ggPacf(df_sales$Food_and_beverage_stores))
+## both acf and pacf are tailing off hence ARIMA order should be 
+
+ggPacf(d1_food_beverage)
+##forecast::ggseasonplot(x = as.ts(df_sales$Food_and_beverage_stores))
+
+
+
+
+## convert all the variables to time-series
+food_beverage.ts <- ts(df_sales$Food_and_beverage_stores, start = c(2018,1,1), frequency = 12)
+grocery.ts <- ts(df_sales$Grocery_stores, start = c(2018,1,1), frequency = 12)
+supermarkets.ts <- ts(df_sales$Supermarkets_and_other_grocery_except_convenience_stores, start = c(2018,1,1), frequency = 12)
+liquor.ts <- ts(df_sales$Beer_wine_and_liquor_stores, start = c(2018,1,1), frequency = 12)
+personalCare.ts <- ts(df_sales$Health_and_personal_care_stores, start = c(2018,1,1), frequency = 12)
+pharmacy.ts <- ts(df_sales$Pharmacies_and_drug_stores, start = c(2018,1,1), frequency = 12)
+gas.ts <- ts(df_sales$Gasoline_stations, start = c(2018,1,1), frequency = 12)
+clothing.ts <- ts(df_sales$Clothing_and_clothing_access_stores, start = c(2018,1,1), frequency = 12)
+mensClothing.ts <- ts(df_sales$Mens_clothing_stores, start = c(2018,1,1), frequency = 12)
+womensClothing.ts <- ts(df_sales$Womens_clothing_stores, start = c(2018,1,1), frequency = 12)
+familyClothing.ts <- ts(df_sales$Family_clothing_stores, start = c(2018,1,1), frequency = 12)
+shoe.ts <- ts(df_sales$Shoe_stores, start = c(2018,1,1), frequency = 12)
+jewelry.ts <- ts(df_sales$Jewelry_stores, start = c(2018,1,1), frequency = 12)
+hobby.ts <- ts(df_sales$Sporting_goods_hobby_musical_instrument_and_book_stores, start = c(2018,1,1), frequency = 12)
+books.ts <- ts(df_sales$Book_stores, start = c(2018,1,1), frequency = 12)
+general_merchandise.ts <- ts(df_sales$General_merchandise_stores, start = c(2018,1,1), frequency = 12)
+department.ts <- ts(df_sales$Department_stores, start = c(2018,1,1), frequency = 12)
+nodiscount.ts <- ts(df_sales$Department_stores_excluding_discount_department_stores, start = c(2018,1,1), frequency = 12)
+discount.ts <- ts(df_sales$Discount_department_stores, start = c(2018,1,1), frequency = 12)
+deaths.ts <- ts(df_sales$Deaths_due_to_covid, start = c(2018,1,1), frequency = 12)
+stringency.ts <- ts(df_sales$Monthly_average_stringency_index, start = c(2018,1,1), frequency = 12)
+
+
+autoplot(food.ts)
+autoplot(deaths.ts)
+autoplot(stringency.ts)
+
+
+#### setting benchmarking models for all retail store types: naive forecast as baseline models
+naive_food<- snaive(food.ts, h=12)
+naive_food
+summary(naive_food)
+autoplot(naive_food)
+
+
+
+library(fpp)
+mean_food <- meanf(food.ts, h=12)
+autoplot(mean_food)
+drift_food <- rwf(food.ts, h=12)
+autoplot(drift_food)
+plot(mean_food, 
+     main="benchmark forecast for food_beverages for the next 12 months")
+    lines(naive_food$mean, col=2)
+    lines(drift_food$mean, col=3)
+    lines(food.ts)
+    legend("topright", lty = 1, col = c(4,2,3),
+    legend=c("Mean","Seasonal Naive", "Naive"))
+    
+## From the above, the best benchmarking/ baseline model to select is seasonal naive model.  
+## So, For all other retail types, we will apply the seasonal naive model.    
+
+    
+naive_grocery <- snaive(grocery.ts, h=12)
+naive_grocery
+summary(naive_grocery)
+autoplot(naive_grocery)
+
+naive_supemarket <- snaive(supermarkets.ts, h=12)
+naive_supemarket
+summary(naive_supemarket)
+autoplot(naive_supemarket)
+
+naive_liquor <- snaive(liquor.ts, h=12)
+naive_liquor
+summary(naive_liquor)
+autoplot(naive_liquor)
+
+naive_personalCare <- snaive(personalCare.ts, h=12)
+naive_personalCare
+summary(naive_personalCare)
+autoplot(naive_personalCare)
+
+naive_pharmacy <- snaive(pharmacy.ts, h=12)
+naive_pharmacy
+summary(naive_pharmacy)
+autoplot(naive_pharmacy)
+
+naive_gas <- snaive(gas.ts, h=12)
+naive_gas
+summary(naive_gas)
+autoplot(naive_gas)
+
+naive_gas <- snaive(gas.ts, h=12)
+naive_gas
+summary(naive_gas)
+autoplot(naive_gas)
+
+naive_clothing <- snaive(clothing.ts, h=12)
+naive_clothing
+summary(naive_clothing)
+autoplot(naive_clothing)
+
+naive_clothing <- snaive(clothing.ts, h=12)
+naive_clothing
+summary(naive_clothing)
+autoplot(naive_clothing)
+
+naive_mensClothing <- snaive(mensClothing.ts, h=12)
+naive_mensClothing
+summary(naive_mensClothing)
+autoplot(naive_mensClothing)
+
+naive_womensClothing <- snaive(womensClothing.ts, h=12)
+naive_womensClothing
+summary(naive_womensClothing)
+autoplot(naive_womensClothing)
+
+naive_familyClothing <- snaive(familyClothing.ts, h=12)
+naive_familyClothing
+summary(naive_familyClothing)
+autoplot(naive_familyClothing)
+
+naive_familyClothing <- snaive(familyClothing.ts, h=12)
+naive_familyClothing
+summary(naive_familyClothing)
+autoplot(naive_familyClothing)
+
+naive_shoe <- snaive(shoe.ts, h=12)
+naive_shoe
+summary(naive_shoe)
+autoplot(naive_shoe)
+
+naive_jewelry <- snaive(jewelry.ts, h=12)
+naive_jewelry
+summary(naive_jewelry)
+autoplot(naive_jewelry)
+
+naive_hobby <- snaive(hobby.ts, h=12)
+naive_hobby
+summary(naive_hobby)
+autoplot(naive_hobby)
+
+naive_books <- snaive(books.ts, h=12)
+naive_books
+summary(naive_books)
+autoplot(naive_books)
+
+naive_generalMerchandise <- snaive(general_merchandise.ts, h=12)
+naive_generalMerchandise
+summary(naive_generalMerchandise)
+autoplot(naive_generalMerchandise)
+
+naive_department <- snaive(department.ts, h=12)
+naive_department
+summary(naive_department)
+autoplot(naive_department)
+
+naive_nodiscount <- snaive(nodiscount.ts, h=12)
+naive_nodiscount
+summary(naive_nodiscount)
+autoplot(naive_nodiscount)
+
+naive_discount <- snaive(discount.ts, h=12)
+naive_discount
+summary(naive_discount)
+autoplot(naive_discount)
+
+## Phillips-Perron Unit Root Test for stationarity
+library(vars)
+library(mFilter)
+library(tseries)
+library(forecast)
+pp.test(food.ts)
+pp.test(deaths.ts)
+pp.test(stringency.ts)
+
+v1 <- cbind(food.ts, deaths.ts, stringency.ts)
+colnames(v1) <- cbind("food","deaths","stringency")
+
+v1
+
+lagselect <- VARselect(v1, lag.max = 15, type = "const")
+lagselect$selection
+
+## Choosing lag=10 based on AIC
+Model1 <- VAR(v1, p = 10, type = "const", season = NULL, exogen = "deaths") 
+Model1
+
+
+forecast <- predict(Model1, n.ahead = 12, ci = 0.95)
+forecast
+
+autoplot(cbind(food, deaths, stringency))
+
+
+## linear regression model
+
+lmodel <- lm(food.ts ~ deaths.ts + stringency.ts)
+summary(lmodel)
+
+## the higher p-value of deaths suggests that is not much significant parameter in the model.
+
+
+test_df <- matrix(c(0,0,0,0,0,0,0,0,0,0,0,0,52.65205,52.32921,52.67195,52.99716,53.06499,53.05524,53.03324,53.02577,53.02516,53.02645,53.02711,53.02725,33912.09,47477.72,52481.98,49976.30,46019.15,44369.01,44967.76,46114.13,46648.36,46514.05,46184.40,46014.05), ncol = 3, nrow = 12)
+colnames(test_df) <- c("food","stringency", "deaths")
+test_df
+
+write.csv(test_df,"test_df.csv", row.names = FALSE)
+
+prediction <- predict(lmodel) #newdata = as.data.frame(test_df))
+prediction
+plot(prediction, type ="l")
+
+
+
+autoplot(cbind(food,prediction))
+## further improve this model by using lags from 1 to 12 for stringency and deaths
+lag_stringency_12 <- lag(df_sales$Monthly_average_stringency_index, n=12)
+stringency_12.ts <- ts(lag_stringency_12, start = c(2018,1,1), frequency = 12)
+
+lmodel_stringency_12 <- lm(food.ts ~ deaths.ts + stringency_12.ts)
+summary(lmodel_stringency_12)
+prediction_stringency_12 <- predict(lmodel_stringency_12)
+prediction_stringency_12
+plot(prediction_stringency_12, type ="l")
+autoplot(cbind(food,prediction,prediction_stringency_12))
+
+######
+lag_stringency_6 <- lag(df_sales$Monthly_average_stringency_index, n=6)
+stringency_6.ts <- ts(lag_stringency_6, start = c(2018,1,1), frequency = 12)
+
+lmodel_stringency_6 <- lm(food.ts ~ deaths.ts + stringency_6.ts)
+summary(lmodel_stringency_12)
+prediction_stringency_6 <- predict(lmodel_stringency_6)
+prediction_stringency_6
+plot(prediction_stringency_6, type ="l")
+autoplot(cbind(food,prediction,prediction_stringency_6, prediction_stringency_12))
+
+####
+lag_stringency_9 <- lag(df_sales$Monthly_average_stringency_index, n=9)
+stringency_9.ts <- ts(lag_stringency_9, start = c(2018,1,1), frequency = 12)
+
+lmodel_stringency_9 <- lm(food.ts ~ deaths.ts + stringency_9.ts)
+summary(lmodel_stringency_9)
+prediction_stringency_9 <- predict(lmodel_stringency_9)
+prediction_stringency_9
+plot(prediction_stringency_9, type ="l")
+autoplot(cbind(food,prediction,prediction_stringency_6,prediction_stringency_9,prediction_stringency_12))
+
+
+###predict food with lags in  both stringency and death 
+
+lag_death_12 <- lag(df_sales$Deaths_due_to_covid, n=12)
+death_12.ts <- ts(lag_death_12, start = c(2018,1,1), frequency = 12)
+
+lmodel_death_12 <- lm(food.ts ~ death_12.ts + stringency.ts)
+summary(lmodel_death_12)
+prediction_death_12 <- predict(lmodel_death_12)
+prediction_death_12
+plot(prediction_death_12, type ="l")
+autoplot(cbind(food,prediction,prediction_death_12))
+
+###
+
+# library(sjPlot)
+# library(sjmisc)
+# library(sjlabelled)
+
+## Perform auto.arima  for all retail types with stringency and death as exogenous variables
+autoarima_food <-auto.arima(food.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_food <- forecast(autoarima_food,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_food
+summary(fcast_autoarima_food)
+autoplot(fcast_autoarima_food)
+
+
+autoarima_grocery <-auto.arima(grocery.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_grocery <- forecast(autoarima_grocery,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_grocery
+summary(fcast_autoarima_grocery)
+autoplot(fcast_autoarima_grocery)
+
+
+autoarima_supermarket <-auto.arima(supermarkets.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_supermarket <- forecast(autoarima_supermarket,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_supermarket
+summary(fcast_autoarima_supermarket)
+autoplot(fcast_autoarima_supermarket)
+
+
+autoarima_liquor <-auto.arima(liquor.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_liquor <- forecast(autoarima_liquor,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_liquor
+summary(fcast_autoarima_liquor)
+autoplot(fcast_autoarima_liquor)
+
+
+autoarima_personalCare <-auto.arima(personalCare.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_personalCare <- forecast(autoarima_personalCare,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_personalCare
+summary(fcast_autoarima_personalCare)
+autoplot(fcast_autoarima_personalCare)
+
+
+autoarima_pharmacy <-auto.arima(pharmacy.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_pharmacy <- forecast(autoarima_pharmacy,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_pharmacy
+summary(fcast_autoarima_pharmacy)
+autoplot(fcast_autoarima_pharmacy)
+
+
+autoarima_gas <-auto.arima(gas.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_gas <- forecast(autoarima_gas,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_gas
+summary(fcast_autoarima_gas)
+autoplot(fcast_autoarima_gas)
+
+
+autoarima_clothing <-auto.arima(clothing.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_clothing <- forecast(autoarima_clothing,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_clothing
+summary(fcast_autoarima_clothing)
+autoplot(fcast_autoarima_clothing)
+
+##autoarima_clothing without pre-defined d value and no regressors
+autoarima_clothing <-auto.arima(clothing.ts)
+fcast_autoarima_clothing <- forecast(autoarima_clothing,h=12)
+fcast_autoarima_clothing
+summary(fcast_autoarima_clothing)
+autoplot(fcast_autoarima_clothing)
+
+
+autoarima_mensClothing <-auto.arima(mensClothing.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_mensClothing <- forecast(autoarima_mensClothing,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_mensClothing
+summary(fcast_autoarima_mensClothing)
+autoplot(fcast_autoarima_mensClothing)
+
+
+autoarima_womensClothing <-auto.arima(womensClothing.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_womensClothing <- forecast(autoarima_womensClothing,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_womensClothing
+summary(fcast_autoarima_womensClothing)
+autoplot(fcast_autoarima_womensClothing)
+
+
+autoarima_familyClothing <-auto.arima(familyClothing.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_familyClothing <- forecast(autoarima_familyClothing,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_familyClothing
+summary(fcast_autoarima_familyClothing)
+autoplot(fcast_autoarima_familyClothing)
+
+
+autoarima_shoe <-auto.arima(shoe.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_shoe <- forecast(autoarima_shoe,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_shoe
+summary(fcast_autoarima_shoe)
+autoplot(fcast_autoarima_shoe)
+
+
+autoarima_jewelry <-auto.arima(jewelry.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_jewelry <- forecast(autoarima_jewelry,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_jewelry
+summary(fcast_autoarima_jewelry)
+autoplot(fcast_autoarima_jewelry)
+
+
+autoarima_hobby <-auto.arima(hobby.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_hobby <- forecast(autoarima_hobby,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_hobby
+summary(fcast_autoarima_hobby)
+autoplot(fcast_autoarima_hobby)
+
+
+autoarima_books <-auto.arima(books.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_books <- forecast(autoarima_books,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_books
+summary(fcast_autoarima_books)
+autoplot(fcast_autoarima_books)
+
+
+autoarima_general_merchandise <-auto.arima(general_merchandise.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_general_merchandise <- forecast(autoarima_general_merchandise,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_general_merchandise
+summary(fcast_autoarima_general_merchandise)
+autoplot(fcast_autoarima_general_merchandise)
+
+
+autoarima_department <-auto.arima(department.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_department <- forecast(autoarima_department,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_department 
+summary(fcast_autoarima_department)
+autoplot(fcast_autoarima_department)
+
+
+autoarima_nodiscount <-auto.arima(nodiscount.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_nodiscount <- forecast(autoarima_nodiscount,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_nodiscount 
+summary(fcast_autoarima_nodiscount)
+autoplot(fcast_autoarima_nodiscount)
+
+
+autoarima_discount <-auto.arima(discount.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_discount <- forecast(autoarima_discount,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_discount 
+summary(fcast_autoarima_discount)
+autoplot(fcast_autoarima_discount)
+
+
+autoarima_discount <-auto.arima(discount.ts, d=1, xreg= stringency_death_matrix[,1:2])
+fcast_autoarima_discount <- forecast(autoarima_discount,h=12, xreg=expected_stringency_death_matrix)
+fcast_autoarima_discount 
+summary(fcast_autoarima_discount)
+autoplot(fcast_autoarima_discount)
 
 
