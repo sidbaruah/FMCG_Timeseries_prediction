@@ -323,10 +323,10 @@ naive_grocery
 summary(naive_grocery)
 autoplot(naive_grocery)
 
-naive_supemarket <- snaive(supermarkets.ts, h=12)
-naive_supemarket
-summary(naive_supemarket)
-autoplot(naive_supemarket)
+naive_supermarket <- snaive(supermarkets.ts, h=12)
+naive_supermarket
+summary(naive_supermarket)
+autoplot(naive_supermarket)
 
 naive_liquor <- snaive(liquor.ts, h=12)
 naive_liquor
@@ -422,6 +422,33 @@ naive_discount <- snaive(discount.ts, h=12)
 naive_discount
 summary(naive_discount)
 autoplot(naive_discount)
+
+naive_model<- function(x, filename){
+mypath <- file.path("C:","Users","my lenovo", "Documents", "RStudio_Projects", "FMCG_Timeseries_prediction","Naive_Forecasts",paste("naiveplot_", filename, ".jpg", sep = ""))
+jpeg(file=mypath)
+plot(x, main = filename)
+dev.off()
+}
+
+naive_model(naive_discount, "discount")
+naive_model(naive_nodiscount, "Nodiscount")
+naive_model(naive_generalMerchandise, "generalMerchandise")
+naive_model(naive_department, "department")
+naive_model(naive_food, "food_beverage")
+naive_model(naive_grocery, "grocery")
+naive_model(naive_supermarket, "supermarket")
+naive_model(naive_liquor, "liquor")
+naive_model(naive_personalCare, "personalcare")
+naive_model(naive_pharmacy, "pharmacy")
+naive_model(naive_gas, "gas")
+naive_model(naive_clothing, "clothing")
+naive_model(naive_mensClothing, "mensClothing")
+naive_model(naive_womensClothing, "womensClothing")
+naive_model(naive_familyClothing, "familyClothing")
+naive_model(naive_hobby, "hobby")
+naive_model(naive_books, "books")
+naive_model(naive_shoe, "shoe")
+
 
 
 
