@@ -161,67 +161,14 @@ p_discountstore
 grid.arrange(p_generalMerchandise, p_department, p_nodiscountstore, p_discountstore, nrow=4, ncol=1)
 
 
-
-##Trying for ARIMA model for food_beverage
-
-library(forecast)
-fit_food_beverage <- arima(df_sales$Food_and_beverage_stores, order = c(3,1,1))
-fcast_food_beverage <- forecast(fit_food_beverage, h = 12)
-fcast_food_beverage
-autoplot(fcast_food_beverage)
-summary(fcast_food_beverage)
-##ARIMAX model for food_beverage with stringency index and death as exogenous variables
-#fit_food_beverage_stringency <- auto.arima(df_sales$Food_and_beverage_stores, xreg = df_sales$Monthly_average_stringency_index)
-
-fit_stringency <- arima(df_sales$Monthly_average_stringency_index, order = c(3,1,1))
-fcast_stringency <- as.data.frame(forecast(fit_stringency, h=12)) #Vector containing next 12 values of monthly average stringency index
-fcast_stringency
-str(fcast_stringency)
-
-fit_death<- arima(df_sales$Deaths_due_to_covid, order = c(3,1,1))
-fcast_death <- as.data.frame(forecast(fit_death, h=12))
-fcast_death
-str(fcast_death)
-
-
-
-# fcast_food_beverage_stringency <- forecast(fit_food_beverage_stringency, h=12, xreg = fcast_stringencyNext12)
-# autoplot(fcast_food_beverage_stringency)
-# 
-# deathsNext12 <- forecast(df_sales$Deaths_due_to_covid, h=12)  #Vector containing next 12 values of deaths due to covid
-# 
-# ##ARIMA model for food_beverage taking stringency index and death columns as a matrix and using inside xreg
-stringency_column <- matrix(df_sales$Monthly_average_stringency_index, ncol = 1)
-death_column <- matrix(df_sales$Deaths_due_to_covid, ncol=1)
-stringency_death_matrix<- cbind(stringency_column,death_column)
-stringency_death_matrix
-fit_food_beverage_stringency_death<- Arima(df_sales$Food_and_beverage_stores, order = c(3,1,1),xreg = stringency_death_matrix[,1:2])
-fit_food_beverage_stringency_death
-
-
-expected_stringency_death_matrix <- matrix(c(52.65205,52.32921,52.67195,52.99716,53.06499,53.05524,53.03324,53.02577,53.02516,53.02645,53.02711,53.02725,33912.09,47477.72,52481.98,49976.30,46019.15,44369.01,44967.76,46114.13,46648.36,46514.05,46184.40,46014.05), ncol = 2, nrow = 12)
-expected_stringency_death_matrix
-fcast_food_beverage_stringency_death<- forecast(fit_food_beverage_stringency_death, xreg = expected_stringency_death_matrix, h=12)
-# summary(fit_food_beverage_stringency_death)
-# coeftest(fit_food_beverage_stringency_death)
+### find correlation of death n stringency with all retail store types. Create a correlation matrix
+cor(df_sales[2:20],df_sales[22:23], method = "pearson")
 
 
 plot(fcast_food_beverage_stringency_death)
 
-#n<- nrow(df_sales)
-#train_indices <- 1:round(0.85 * n) #get train indices
-train <- df_sales[1:36,] #split test data based on row numbers
-train
-#test_indices <- (round(0.6 * n) + 1):n #get test indices
-test <- df_sales[37:40,] #split test data based on row numbers
-test
 
-# make arima model based on train data and validate with test data
-fit_train<- auto.arima(train$Food_and_beverage_stores, d=1, xreg = stringency_death_matrix[1:36,1:2])
-fcast_test <- forecast(fit_train, xreg = stringency_death_matrix[37:40,1:2], h = 4)
-fcast_test
-autoplot(fcast_test)
-summary(fcast_test)
+
 
 
 ## ADF test to check for stationarity
@@ -345,13 +292,8 @@ deaths.ts <- ts(df_sales$Deaths_due_to_covid, start = c(2018,1,1), frequency = 1
 stringency.ts <- ts(df_sales$Monthly_average_stringency_index, start = c(2018,1,1), frequency = 12)
 
 
-autoplot(food.ts)
-autoplot(deaths.ts)
-autoplot(stringency.ts)
-
-
 #### setting benchmarking models for all retail store types: naive forecast as baseline models
-naive_food<- snaive(food.ts, h=12)
+naive_food<- snaive(food_beverage.ts, h=12)
 naive_food
 summary(naive_food)
 autoplot(naive_food)
@@ -359,22 +301,23 @@ autoplot(naive_food)
 
 
 library(fpp)
-mean_food <- meanf(food.ts, h=12)
+mean_food <- meanf(food_beverage.ts, h=12)
 autoplot(mean_food)
-drift_food <- rwf(food.ts, h=12)
+drift_food <- rwf(food_beverage.ts, h=12)
 autoplot(drift_food)
 plot(mean_food, 
      main="benchmark forecast for food_beverages for the next 12 months")
     lines(naive_food$mean, col=2)
     lines(drift_food$mean, col=3)
-    lines(food.ts)
+    lines(food_beverage.ts)
     legend("topright", lty = 1, col = c(4,2,3),
     legend=c("Mean","Seasonal Naive", "Naive"))
     
 ## From the above, the best benchmarking/ baseline model to select is seasonal naive model.  
-## So, For all other retail types, we will apply the seasonal naive model.    
+## So, For all other retail types, we will apply the seasonal naive model as benchmark.    
 
-    
+
+       
 naive_grocery <- snaive(grocery.ts, h=12)
 naive_grocery
 summary(naive_grocery)
@@ -480,26 +423,28 @@ naive_discount
 summary(naive_discount)
 autoplot(naive_discount)
 
+
+
 ## Phillips-Perron Unit Root Test for stationarity
 library(vars)
 library(mFilter)
 library(tseries)
 library(forecast)
-pp.test(food.ts)
-pp.test(deaths.ts)
-pp.test(stringency.ts)
-
-v1 <- cbind(food.ts, deaths.ts, stringency.ts)
-colnames(v1) <- cbind("food","deaths","stringency")
-
-v1
-
-lagselect <- VARselect(v1, lag.max = 15, type = "const")
-lagselect$selection
-
-## Choosing lag=10 based on AIC
-Model1 <- VAR(v1, p = 10, type = "const", season = NULL, exogen = "deaths") 
-Model1
+# pp.test(food.ts)
+# pp.test(deaths.ts)
+# pp.test(stringency.ts)
+# 
+# v1 <- cbind(food_beverage.ts, deaths.ts, stringency.ts)
+# colnames(v1) <- cbind("food","deaths","stringency")
+# 
+# v1
+# 
+# lagselect <- VARselect(v1, lag.max = 15, type = "const")
+# lagselect$selection
+# 
+# ## Choosing lag=10 based on AIC
+# Model1 <- VAR(v1, p = 10, type = "const", season = NULL, exogen = "deaths")
+# Model1
 
 
 forecast <- predict(Model1, n.ahead = 12, ci = 0.95)
@@ -510,78 +455,118 @@ autoplot(cbind(food, deaths, stringency))
 
 ## linear regression model
 
-lmodel <- lm(food.ts ~ deaths.ts + stringency.ts)
-summary(lmodel)
-
-## the higher p-value of deaths suggests that is not much significant parameter in the model.
-
-
-test_df <- matrix(c(0,0,0,0,0,0,0,0,0,0,0,0,52.65205,52.32921,52.67195,52.99716,53.06499,53.05524,53.03324,53.02577,53.02516,53.02645,53.02711,53.02725,33912.09,47477.72,52481.98,49976.30,46019.15,44369.01,44967.76,46114.13,46648.36,46514.05,46184.40,46014.05), ncol = 3, nrow = 12)
-colnames(test_df) <- c("food","stringency", "deaths")
-test_df
-
-write.csv(test_df,"test_df.csv", row.names = FALSE)
-
-prediction <- predict(lmodel) #newdata = as.data.frame(test_df))
-prediction
-plot(prediction, type ="l")
+# lmodel <- lm(food_beverage.ts ~ deaths.ts + stringency.ts)
+# summary(lmodel)
+# plot(fitted(lmodel),resid(lmodel))
+# abline(0,0)
+# qqnorm(resid(lmodel))
+# qqline(resid(lmodel))
+# plot(density(resid(lmodel)))
+# 
+# 
+# stringency_1<- stats::lag(stringency.ts,1)
+# stringency_2<-stats::lag(stringency.ts,-1)
+# stringency.ts
+# lmodel_3 <- lm(food_beverage.ts ~ stringency_3)
 
 
 
-autoplot(cbind(food,prediction))
-## further improve this model by using lags from 1 to 12 for stringency and deaths
-lag_stringency_12 <- lag(df_sales$Monthly_average_stringency_index, n=12)
-stringency_12.ts <- ts(lag_stringency_12, start = c(2018,1,1), frequency = 12)
+# test_df <- matrix(c(0,0,0,0,0,0,0,0,0,0,0,0,52.65205,52.32921,52.67195,52.99716,53.06499,53.05524,53.03324,53.02577,53.02516,53.02645,53.02711,53.02725,33912.09,47477.72,52481.98,49976.30,46019.15,44369.01,44967.76,46114.13,46648.36,46514.05,46184.40,46014.05), ncol = 3, nrow = 12)
+# colnames(test_df) <- c("food","stringency", "deaths")
+# test_df
+#write.csv(test_df,"test_df.csv", row.names = FALSE)
 
-lmodel_stringency_12 <- lm(food.ts ~ deaths.ts + stringency_12.ts)
-summary(lmodel_stringency_12)
-prediction_stringency_12 <- predict(lmodel_stringency_12)
-prediction_stringency_12
-plot(prediction_stringency_12, type ="l")
-autoplot(cbind(food,prediction,prediction_stringency_12))
-
-######
-lag_stringency_6 <- lag(df_sales$Monthly_average_stringency_index, n=6)
-stringency_6.ts <- ts(lag_stringency_6, start = c(2018,1,1), frequency = 12)
-
-lmodel_stringency_6 <- lm(food.ts ~ deaths.ts + stringency_6.ts)
-summary(lmodel_stringency_12)
-prediction_stringency_6 <- predict(lmodel_stringency_6)
-prediction_stringency_6
-plot(prediction_stringency_6, type ="l")
-autoplot(cbind(food,prediction,prediction_stringency_6, prediction_stringency_12))
-
-####
-lag_stringency_9 <- lag(df_sales$Monthly_average_stringency_index, n=9)
-stringency_9.ts <- ts(lag_stringency_9, start = c(2018,1,1), frequency = 12)
-
-lmodel_stringency_9 <- lm(food.ts ~ deaths.ts + stringency_9.ts)
-summary(lmodel_stringency_9)
-prediction_stringency_9 <- predict(lmodel_stringency_9)
-prediction_stringency_9
-plot(prediction_stringency_9, type ="l")
-autoplot(cbind(food,prediction,prediction_stringency_6,prediction_stringency_9,prediction_stringency_12))
-
-
-###predict food with lags in  both stringency and death 
-
-lag_death_12 <- lag(df_sales$Deaths_due_to_covid, n=12)
-death_12.ts <- ts(lag_death_12, start = c(2018,1,1), frequency = 12)
-
-lmodel_death_12 <- lm(food.ts ~ death_12.ts + stringency.ts)
-summary(lmodel_death_12)
-prediction_death_12 <- predict(lmodel_death_12)
-prediction_death_12
-plot(prediction_death_12, type ="l")
-autoplot(cbind(food,prediction,prediction_death_12))
-
-###
-
-# library(sjPlot)
-# library(sjmisc)
-# library(sjlabelled)
+# prediction <- predict(lmodel)# newdata = as.data.frame(test_df))
+# prediction
+# plot(prediction, type ="l")
+# 
+# 
+# 
+# 
+# 
+# autoplot(cbind(food,prediction))
+# ## further improve this model by using lags from 1 to 12 for stringency and deaths
+# lag_stringency_12 <- lag(df_sales$Monthly_average_stringency_index, n=12)
+# stringency_12.ts <- ts(lag_stringency_12, start = c(2018,1,1), frequency = 12)
+# 
+# lmodel_stringency_12 <- lm(food.ts ~ deaths.ts + stringency_12.ts)
+# summary(lmodel_stringency_12)
+# prediction_stringency_12 <- predict(lmodel_stringency_12)
+# prediction_stringency_12
+# plot(prediction_stringency_12, type ="l")
+# autoplot(cbind(food,prediction,prediction_stringency_12))
+# 
+# ######
+# lag_stringency_6 <- lag(df_sales$Monthly_average_stringency_index, n=6)
+# stringency_6.ts <- ts(lag_stringency_6, start = c(2018,1,1), frequency = 12)
+# 
+# lmodel_stringency_6 <- lm(food.ts ~ deaths.ts + stringency_6.ts)
+# summary(lmodel_stringency_12)
+# prediction_stringency_6 <- predict(lmodel_stringency_6)
+# prediction_stringency_6
+# plot(prediction_stringency_6, type ="l")
+# autoplot(cbind(food,prediction,prediction_stringency_6, prediction_stringency_12))
+# 
+# ####
+# lag_stringency_9 <- lag(df_sales$Monthly_average_stringency_index, n=9)
+# stringency_9.ts <- ts(lag_stringency_9, start = c(2018,1,1), frequency = 12)
+# 
+# lmodel_stringency_9 <- lm(food.ts ~ deaths.ts + stringency_9.ts)
+# summary(lmodel_stringency_9)
+# prediction_stringency_9 <- predict(lmodel_stringency_9)
+# prediction_stringency_9
+# plot(prediction_stringency_9, type ="l")
+# autoplot(cbind(food,prediction,prediction_stringency_6,prediction_stringency_9,prediction_stringency_12))
+# 
+# 
+# ###predict food with lags in  both stringency and death 
+# 
+# lag_death_12 <- lag(df_sales$Deaths_due_to_covid, n=12)
+# death_12.ts <- ts(lag_death_12, start = c(2018,1,1), frequency = 12)
+# 
+# lmodel_death_12 <- lm(food.ts ~ death_12.ts + stringency.ts)
+# summary(lmodel_death_12)
+# prediction_death_12 <- predict(lmodel_death_12)
+# prediction_death_12
+# plot(prediction_death_12, type ="l")
+# autoplot(cbind(food,prediction,prediction_death_12))
+# 
 
 ## Perform auto.arima  for all retail types with stringency and death as exogenous variables
+
+## forecast death and stringency using arima based on 1st differencing so that these values can be used to make arima models for next 12 periods
+
+fit_stringency <- arima(df_sales$Monthly_average_stringency_index, order = c(3,1,1))
+fcast_stringency <- as.data.frame(forecast(fit_stringency, h=12)) #Vector containing next 12 values of monthly average stringency index
+fcast_stringency
+str(fcast_stringency)
+
+fit_death<- arima(df_sales$Deaths_due_to_covid, order = c(3,1,1))
+fcast_death <- as.data.frame(forecast(fit_death, h=12))
+fcast_death
+str(fcast_death)
+
+
+##xreg = stringency_death_matrix[1:36,1:2])
+##fcast_test <- forecast(fit_train, xreg = stringency_death_matrix[37:40,1:2], h = 4)
+
+
+# ##ARIMA model for food_beverage taking stringency index and death columns as a matrix and using inside xreg
+stringency_column <- matrix(df_sales$Monthly_average_stringency_index, ncol = 1)
+death_column <- matrix(df_sales$Deaths_due_to_covid, ncol=1)
+stringency_death_matrix<- cbind(stringency_column,death_column)
+stringency_death_matrix
+fit_food_beverage_stringency_death<- Arima(df_sales$Food_and_beverage_stores, order = c(3,1,1),xreg = stringency_death_matrix[,1:2])
+fit_food_beverage_stringency_death
+
+
+expected_stringency_death_matrix <- matrix(c(52.65205,52.32921,52.67195,52.99716,53.06499,53.05524,53.03324,53.02577,53.02516,53.02645,53.02711,53.02725,33912.09,47477.72,52481.98,49976.30,46019.15,44369.01,44967.76,46114.13,46648.36,46514.05,46184.40,46014.05), ncol = 2, nrow = 12)
+expected_stringency_death_matrix
+fcast_food_beverage_stringency_death<- forecast(fit_food_beverage_stringency_death, xreg = expected_stringency_death_matrix, h=12)
+# summary(fit_food_beverage_stringency_death)
+# coeftest(fit_food_beverage_stringency_death)
+
+
 autoarima_food <-auto.arima(food.ts, d=1, xreg= stringency_death_matrix[,1:2])
 fcast_autoarima_food <- forecast(autoarima_food,h=12, xreg=expected_stringency_death_matrix)
 fcast_autoarima_food
@@ -727,5 +712,183 @@ fcast_autoarima_discount <- forecast(autoarima_discount,h=12, xreg=expected_stri
 fcast_autoarima_discount 
 summary(fcast_autoarima_discount)
 autoplot(fcast_autoarima_discount)
+
+
+## do i need to divide the dataset into test and train before doing the arima and the naive? -YES!! 
+
+#http://r-statistics.co/Time-Series-Forecasting-With-R.html
+tbatsFit <- tbats(food_beverage.ts, use.parallel=TRUE, num.cores = 2) # fit tbats model
+plot(forecast(tbatsFit)) # plot
+components <- tbats.components(tbatsFit)
+plot(components)
+
+ 
+### convert dataset into test and train- use for all models
+### make a dataframe containing mase and rmse values of all models- naive, linear model, autoarima
+
+### Split  data to test and train for all retail store types using TSstudio and then use ARIMA to check test accuracy
+
+# train <- df_sales[1:36,] #split test data based on row numbers
+# train
+# 
+# test <- df_sales[37:40,] #split test data based on row numbers
+# test
+library(TSstudio)
+functionToSplit<-function(x){
+  split_dataset<-ts_split(x, sample.out = 4) # this will create test data with last 4 values of the dataset. Rest will be train dat
+  
+}
+print(functionToSplit(grocery.ts))
+print(functionToSplit(grocery.ts)$train)
+print(functionToSplit(grocery.ts)$test)
+
+stringency_train<-functionToSplit(stringency.ts)$train
+stringency_test<-functionToSplit(stringency.ts)$test
+
+# make arima model based on train data and validate with test data
+# fit_train<- auto.arima(train$Food_and_beverage_stores, d=1, xreg = stringency_death_matrix[1:36,1:2])
+# fcast_test <- forecast(fit_train, xreg = stringency_death_matrix[37:40,1:2], h = 4)
+# fcast_test
+# autoplot(fcast_test)
+# summary(fcast_test)
+
+
+
+create_naive_model<- function(x){
+  naive_fit <- snaive(x$train, h=4)
+  naive_fit
+  summary(naive_fit)
+  accuracy(naive_fit,x$test)
+  #autoplot(naive_fit)
+}
+
+create_naive_model(functionToSplit(food_beverage.ts))
+
+create_arima_model<- function(x){
+autoarima_fit <-auto.arima(x$train, d=1, xreg= stringency_death_matrix[1:36,1:2])
+fcast_autoarima_fit <- forecast(autoarima_fit,h=4, xreg=stringency_death_matrix[37:40,1:2])
+fcast_autoarima_fit 
+print("Summary:")
+summary(fcast_autoarima_fit)
+cat("Test dataset values: \n", x$test, "\n")
+
+print("Accuracy:")
+accuracy(fcast_autoarima_fit, x$test)
+#autoplot(fcast_autoarima_discount)
+}
+
+create_arima_model(functionToSplit(food_beverage.ts))
+create_arima_model(functionToSplit(grocery.ts))
+create_arima_model(functionToSplit(supermarkets.ts))
+create_arima_model(functionToSplit(liquor.ts))
+create_arima_model(functionToSplit(personalCare.ts))
+create_arima_model(functionToSplit(pharmacy.ts))
+create_arima_model(functionToSplit(gas.ts))
+create_arima_model(functionToSplit(clothing.ts))
+create_arima_model(functionToSplit(mensClothing.ts))
+create_arima_model(functionToSplit(womensClothing.ts))
+create_arima_model(functionToSplit(familyClothing.ts))
+create_arima_model(functionToSplit(shoe.ts))
+create_arima_model(functionToSplit(jewelry.ts))
+create_arima_model(functionToSplit(hobby.ts))
+create_arima_model(functionToSplit(books.ts))
+create_arima_model(functionToSplit(general_merchandise.ts))
+create_arima_model(functionToSplit(department.ts))
+create_arima_model(functionToSplit(nodiscount.ts))
+create_arima_model(functionToSplit(discount.ts))
+
+
+
+##http://r-statistics.co/Linear-Regression.html: IMPORTANT!!! 
+# For linear model comparison, the model with the lowest AIC and BIC score is preferred.
+
+##perform linear regression for all store types
+#lmodel <- lm(food_beverage.ts ~ deaths.ts + stringency.ts)
+
+library(xts)
+food_beverage.ts
+food_beverage_xts<- as.xts(food_beverage.ts)
+stringency_xts<- as.xts(stringency.ts)
+deaths_xts<- as.xts(deaths.ts)
+stringency_train_xts<-as.xts(stringency_train)
+stringency_test_xts<-as.xts(stringency_test)
+lmodel_food_1<- lm(food_beverage_xts~stringency_xts/stats::lag(stringency_xts)-1)
+summary(lmodel_food_1)
+summary(lmodel)
+accuracy(lmodel)
+accuracy(lmodel_food_1)
+
+
+##train test
+stringency_xts<- as.xts(stringency.ts)
+deaths_xts<- as.xts(deaths.ts)
+
+
+## create a function to build linear regression model based on lags
+
+create_lm_model_with_lag<- function(x, folder_name){
+  
+  trainData_ts_to_xts<- as.xts(x)
+  
+  lmodel_retail_type<- lm(x~stringency_xts)
+  
+  cat("Print Model Summary without lag", "\n")
+  print(summary(lmodel_retail_type))
+  
+  cat("Print Accuracy of model without lag", "\n")
+  print(accuracy(lmodel_retail_type))
+  
+  predictions <- predict(lmodel_retail_type)
+  models <- c()
+  rmse <- c()
+  for(i in -12:12){
+    
+    stringency_lag <- stats::lag(stringency_xts,i)
+    lmodel_retail_type_lag<- lm(x~stringency_lag)
+    cat("Print Model Summary with lag = ", i,  "\n")
+    print(summary(lmodel_retail_type_lag))
+    cat("Print Accuracy of model with lag = ", i, "\n")
+    print(accuracy(lmodel_retail_type_lag))
+    
+    predictions_lag <- predict(lmodel_retail_type_lag)
+    
+    models <- c(models, i)
+    rmse <- c(rmse, accuracy(lmodel_retail_type_lag)[2])
+    
+    mypath <- file.path("C:","Users","my lenovo", "Documents", "RStudio_Projects", "FMCG_Timeseries_prediction",folder_name,paste("myplot_", i, ".jpg", sep = ""))
+    jpeg(file=mypath)
+    mytitle = paste("Lag ", i)
+    plot(cbind(food,predictions,predictions_lag), main = mytitle)
+    dev.off()
+  }
+  
+  result_matrix <- matrix(c(models, rmse), ncol = 2, nrow = 25)
+  colnames(result_matrix) <- c("models","rmse")
+  print(result_matrix) 
+  
+}
+
+create_lm_model_with_lag(food_beverage.ts, "food_lags")
+create_lm_model_with_lag(grocery.ts, "grocery_lags")
+create_lm_model_with_lag(supermarkets.ts, "supermarkets_lags")
+create_lm_model_with_lag(liquor.ts, "liquor_lags")
+create_lm_model_with_lag(personalCare.ts, "pcare_lags")
+create_lm_model_with_lag(pharmacy.ts, "pharmacy_lags")
+create_lm_model_with_lag(gas.ts,"gas_lags")
+create_lm_model_with_lag(clothing.ts, "clothing_lags")
+create_lm_model_with_lag(mensClothing.ts, "mensClothing_lags")
+create_lm_model_with_lag(womensClothing.ts, "womensClothing_lags")
+create_lm_model_with_lag(familyClothing.ts, "familyClothing_lags")
+create_lm_model_with_lag(shoe.ts, "shoe_lags")
+create_lm_model_with_lag(jewelry.ts, "jewelry_lags")
+create_lm_model_with_lag(hobby.ts, "hobby_lags")
+create_lm_model_with_lag(books.ts, "books_lags")
+create_lm_model_with_lag(general_merchandise.ts, "general_merchandise_lags")
+create_lm_model_with_lag(department.ts, "department_lags")
+create_lm_model_with_lag(nodiscount.ts, "nodiscount_lags")
+create_lm_model_with_lag(discount.ts, "discount_lags")
+
+
+
 
 
