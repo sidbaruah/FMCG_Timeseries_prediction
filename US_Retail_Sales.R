@@ -165,18 +165,13 @@ grid.arrange(p_generalMerchandise, p_department, p_nodiscountstore, p_discountst
 cor(df_sales[2:20],df_sales[22:23], method = "pearson")
 
 
-plot(fcast_food_beverage_stringency_death)
-
-
-
-
 
 ## ADF test to check for stationarity
 adf.test(df_sales$Food_and_beverage_stores)
 ## from the ADF test, the p-value = 0.4593 > 0.05 means that we fail to reject the null hypothesis. That  means the data is NOT stationary.
 
 
-##now to convert the varuable into stationary, we can try to convert it to log / 1st difference / 2nd difference
+##now to convert the variable into stationary, we can try to convert it to log / 1st difference / 2nd difference
 #convert to log
 ln_food_beverage <- log(df_sales$Food_and_beverage_stores)
 ln_food_beverage
@@ -252,10 +247,10 @@ multi_stat_tests(df_sales[2:20])
 residuals(fcast_d1_food_beverage)
 plot(fcast_d1_food_beverage$residuals)
 
-## convert data to time-series
-timeseries_monthly <- ts(df_sales[,2:20],start = c(2018,1), frequency = 12)
-
-ggseasonplot(timeseries_monthly, year.labels=TRUE, continuous=TRUE)
+# ## convert data to time-series
+# timeseries_monthly <- ts(df_sales[,2:20],start = c(2018,1), frequency = 12)
+# 
+# ggseasonplot(timeseries_monthly, year.labels=TRUE, continuous=TRUE)
 
 ggAcf(df_sales$Food_and_beverage_stores)
 ggPacf(df_sales$Food_and_beverage_stores)
@@ -293,12 +288,6 @@ stringency.ts <- ts(df_sales$Monthly_average_stringency_index, start = c(2018,1,
 
 
 #### setting benchmarking models for all retail store types: naive forecast as baseline models
-naive_food<- snaive(food_beverage.ts, h=12)
-naive_food
-summary(naive_food)
-autoplot(naive_food)
-
-
 
 library(fpp)
 mean_food <- meanf(food_beverage.ts, h=12)
@@ -313,10 +302,49 @@ plot(mean_food,
     legend("topright", lty = 1, col = c(4,2,3),
     legend=c("Mean","Seasonal Naive", "Naive"))
     
-## From the above, the best benchmarking/ baseline model to select is seasonal naive model.  
-## So, For all other retail types, we will apply the seasonal naive model as benchmark.    
+## From the above, the best benchmarking/ baseline model to select is naive model.  
+## So, For all other retail types, we will apply the naive model as benchmark.    
+
+naive_benchmark_model<- function(x, filename){
+  naive_model<- naive(x,h=12)
+  summary(naive_model)
+  path <- file.path("C:","Users","my lenovo", "Documents", "RStudio_Projects", "FMCG_Timeseries_prediction","Naive_benchmark",paste("naive_", filename, ".png", sep = ""))
+  png(file=path)
+  plot(naive_model, main = filename)
+  dev.off()
+  
+}    
+
+naive_benchmark_model(discount.ts, "discount")
+naive_benchmark_model(nodiscount.ts, "Nodiscount")
+naive_benchmark_model(general_merchandise.ts, "generalMerchandise")
+naive_benchmark_model(department.ts, "department")
+naive_benchmark_model(food_beverage.ts, "food_beverage")
+naive_benchmark_model(grocery.ts, "grocery")
+naive_benchmark_model(supermarkets.ts, "supermarket")
+naive_benchmark_model(liquor.ts, "liquor")
+naive_benchmark_model(personalCare.ts, "personalcare")
+naive_benchmark_model(pharmacy.ts, "pharmacy")
+naive_benchmark_model(gas.ts, "gas")
+naive_benchmark_model(clothing.ts, "clothing")
+naive_benchmark_model(mensClothing.ts, "mensClothing")
+naive_benchmark_model(womensClothing.ts, "womensClothing")
+naive_benchmark_model(familyClothing.ts, "familyClothing")
+naive_benchmark_model(hobby.ts, "hobby")
+naive_benchmark_model(books.ts, "books")
+naive_benchmark_model(shoe.ts, "shoe")
+naive_benchmark_model(jewelry.ts, "jewelry")
 
 
+##Now we apply different time-series models to all the retail types to check for best fit model
+##Models: Snaive model, Arima, Linear regression
+    
+##Seasonal naive model for forecasts across all retail-store types    
+naive_food<- snaive(food_beverage.ts, h=12)
+naive_food
+summary(naive_food)
+autoplot(naive_food)
+    
        
 naive_grocery <- snaive(grocery.ts, h=12)
 naive_grocery
@@ -423,31 +451,32 @@ naive_discount
 summary(naive_discount)
 autoplot(naive_discount)
 
-naive_model<- function(x, filename){
-mypath <- file.path("C:","Users","my lenovo", "Documents", "RStudio_Projects", "FMCG_Timeseries_prediction","Naive_Forecasts",paste("naiveplot_", filename, ".jpg", sep = ""))
+snaive_model<- function(x, filename){
+mypath <- file.path("C:","Users","my lenovo", "Documents", "RStudio_Projects", "FMCG_Timeseries_prediction","SeasonalNaive_Forecasts",paste("snaiveplot_", filename, ".jpg", sep = ""))
 jpeg(file=mypath)
 plot(x, main = filename)
 dev.off()
 }
 
-naive_model(naive_discount, "discount")
-naive_model(naive_nodiscount, "Nodiscount")
-naive_model(naive_generalMerchandise, "generalMerchandise")
-naive_model(naive_department, "department")
-naive_model(naive_food, "food_beverage")
-naive_model(naive_grocery, "grocery")
-naive_model(naive_supermarket, "supermarket")
-naive_model(naive_liquor, "liquor")
-naive_model(naive_personalCare, "personalcare")
-naive_model(naive_pharmacy, "pharmacy")
-naive_model(naive_gas, "gas")
-naive_model(naive_clothing, "clothing")
-naive_model(naive_mensClothing, "mensClothing")
-naive_model(naive_womensClothing, "womensClothing")
-naive_model(naive_familyClothing, "familyClothing")
-naive_model(naive_hobby, "hobby")
-naive_model(naive_books, "books")
-naive_model(naive_shoe, "shoe")
+snaive_model(naive_discount, "discount")
+snaive_model(naive_nodiscount, "Nodiscount")
+snaive_model(naive_generalMerchandise, "generalMerchandise")
+snaive_model(naive_department, "department")
+snaive_model(naive_food, "food_beverage")
+snaive_model(naive_grocery, "grocery")
+snaive_model(naive_supermarket, "supermarket")
+snaive_model(naive_liquor, "liquor")
+snaive_model(naive_personalCare, "personalcare")
+snaive_model(naive_pharmacy, "pharmacy")
+snaive_model(naive_gas, "gas")
+snaive_model(naive_clothing, "clothing")
+snaive_model(naive_mensClothing, "mensClothing")
+snaive_model(naive_womensClothing, "womensClothing")
+snaive_model(naive_familyClothing, "familyClothing")
+snaive_model(naive_hobby, "hobby")
+snaive_model(naive_books, "books")
+snaive_model(naive_shoe, "shoe")
+snaive_model(naive_jewelry, "jewelry")
 
 
 
